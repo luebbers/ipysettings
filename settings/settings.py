@@ -4,14 +4,14 @@ import jsonschema
 import ipywidgets
 import json
 
+
 class Settings():
     """Container class for settings data
 
-    Constructed from a JSON Schema. Use like a dictionary to store and
-    retrieve settings data.
-    Will also create a ipywidget interactive representation via `gui()`. Also supports nested schemata
-    (i.e. a schema tha contains `object` properties, which are themselves
-    settings containers."""
+    Constructed from a JSON Schema. Use like a dictionary to store and retrieve
+    settings data.  Will also create a ipywidget interactive representation via
+    `gui()`.  Also supports nested schemata (i.e. a schema tha contains
+    `object` properties, which are themselves settings containers."""
 
     def __init__(self, schema):
         """Construct a settings object from a JSON schema definition"""
@@ -22,43 +22,64 @@ class Settings():
         self.children = {}
 
         # Create GUI
-        # Widget objects are collected in a dictionary (for update in __setitem__())
-        # as well as a list (together with their description labels to create a VBox for display).
+        # Widget objects are collected in a dictionary (for update in
+        # __setitem__()) as well as a list (together with their description
+        # labels to create a VBox for display).
         self.widgets = {}
         self.widgetlist = []
         for name, props in self.schema['properties'].items():
             minimum = props.get('minimum', None)
             maximum = props.get('maximum', None)
             description = props.get('description', '')
-            # Containers create new `settings` instances - save those children for later
+            # Containers create new `settings` instances - save those children
+            # for later
             if props['type'] == 'object':
-                subschema = {"title": name, "type": "object", "properties": props['properties']}
+                subschema = {
+                    "title": name,
+                    "type": "object",
+                    "properties": props['properties']
+                }
                 self.children[name] = Settings(subschema)
             else:
                 # Scalar data elements are displayed as is
                 if props['type'] == 'integer':
                     value = self.data.get(name, props.get('default', 0))
-                    widget = ipywidgets.IntSlider(description=name, min=minimum, max=maximum, value=value)
+                    widget = ipywidgets.IntSlider(
+                        description=name,
+                        min=minimum,
+                        max=maximum,
+                        value=value)
                 elif props['type'] == 'number':
                     value = self.data.get(name, props.get('default', 0.0))
-                    widget = ipywidgets.FloatSlider(description=name, min=minimum, max=maximum, value=value)
+                    widget = ipywidgets.FloatSlider(
+                        description=name,
+                        min=minimum,
+                        max=maximum,
+                        value=value)
                 elif props['type'] == 'string':
                     # also supports drop down
                     value = self.data.get(name, props.get('default', ''))
                     if 'choices' in props:
-                        widget = ipywidgets.Dropdown(options=props['choices'].split(';'), value=value, description=name)
+                        widget = ipywidgets.Dropdown(
+                            options=props['choices'].split(';'),
+                            value=value,
+                            description=name)
                     else:
                         widget = ipywidgets.Text(description=name, value=value)
                 elif props['type'] == 'boolean':
                     value = self.data.get(name, props.get('default', False))
                     widget = ipywidgets.Checkbox(description=name, value=value)
                 else:
-                    widget = ipywidgets.Label(description=name, value=f"Don't know how to draw {props['type']}")
+                    widget = ipywidgets.Label(
+                        description=name,
+                        value=f"Don't know how to draw {props['type']}")
 
                 widget.observe(self.on_value_change, names='value')
                 # save for self-reference
-                self.widgets[name] = widget 
-                self.widgetlist.append(ipywidgets.HBox([widget, ipywidgets.Label(value=description)]))
+                self.widgets[name] = widget
+                self.widgetlist.append(
+                    ipywidgets.HBox(
+                        [widget, ipywidgets.Label(value=description)]))
 
         # Add all saved children in a Tab
         if self.children:
@@ -67,12 +88,11 @@ class Settings():
                 widget.set_title(i, c)
             widget.observe(self.on_value_change, names='value')
             # save for self-reference
-            self.widgets['_children'] = widget 
+            self.widgets['_children'] = widget
             self.widgetlist.append(widget)
 
         # Return all widgets in a VBox
         self._gui = ipywidgets.VBox(self.widgetlist)
-
 
     def from_dict(self, dict_in):
         """Load settings data from a dictionary.
@@ -86,13 +106,11 @@ class Settings():
             else:
                 self[key] = value
 
-
     def from_json(self, json_in):
         """Load settings data from JSON."""
 
         temp = json.loads(json_in)
         self.from_dict(temp)
-
 
     def to_json(self):
         """Dump settings data as JSON."""
@@ -100,7 +118,6 @@ class Settings():
         if not self.data:
             return None
         return json.dumps(self.to_dict())
-
 
     def to_dict(self):
         """Dump settings data as dictionary."""
@@ -110,10 +127,8 @@ class Settings():
             ret[name] = child.to_dict()
         return ret
 
-
     def __repr__(self):
         return 'Settings "' + self.schema['title'] + '" ' + str(self.data)
-
 
     def __getitem__(self, item):
         """Allow using dict syntax for object retrievel.
@@ -125,12 +140,11 @@ class Settings():
             return self.children[item]
         return self.data.__getitem__(item)
 
-
     def __setitem__(self, item, value):
         """Allow using dict syntax for setting values.
 
-        Will only allow setting values in accordance with schema used for object
-        generation."""
+        Will only allow setting values in accordance with schema used for
+        object generation."""
 
         if item not in self.schema['properties']:
             raise KeyError(f'"{item}" not in schema')
@@ -142,14 +156,13 @@ class Settings():
         if item in self.widgets:
             self.widgets[item].value = value
 
-
     def on_value_change(self, change):
         """Callback for GUI updates."""
 
         key = change['owner'].description
         self[key] = change['new']
         if self.callback:
-            self.callback(self.to_dict) # TODO: expensive!
+            self.callback(self.to_dict)  # TODO: expensive!
 
     def interact(self, callback=None):
         """Return an interactive ipywidgets GUI for setting values.
@@ -161,4 +174,3 @@ class Settings():
         for c in self.children.values():
             c.callback = callback
         return self._gui
-
