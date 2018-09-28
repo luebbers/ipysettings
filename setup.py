@@ -18,4 +18,8 @@ setuptools.setup(
         'License :: OSI Approved :: BSD3 License',
         'Operating System :: OS Independent',
     ],
+    install_requires=[
+        'jsonschema>=2.6.0',
+        'ipywidgets>=7.4.2',
+    ],
 )
